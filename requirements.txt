@@ -1,0 +1,5 @@
+loguru
+paramiko
+pysnow
+pywinrm
+requests

@@ -1,0 +1,21 @@
+[local]
+log_level = DEBUG
+
+[snow]
+snow_instance = instance
+api_user = user
+api_password = **********
+; NOTE no trailing backslash
+base_url = https://instance.com
+api_key = *************
+; NOTE no beginning or trailing backslash
+decrypt_path = path/to/decrypt
+company = Company
+
+[email]
+server = smtp.server
+port = 587
+to = to@example.com
+from = from@example.com
+user = user
+password = ********
