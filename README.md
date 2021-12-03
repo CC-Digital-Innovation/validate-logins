@@ -51,10 +51,10 @@ If docker is not desired, the program can be run standalone but will require pyt
 Download code from GitHub:
 
 ```bash
-git clone https://github.com/CC-Digital-Innovation/reconcile-snow-prtg.git
+git clone https://github.com/CC-Digital-Innovation/validate-logins.git
 ```
 
-* or download the [zip](https://github.com/CC-Digital-Innovation/reconcile-snow-prtg/archive/refs/heads/main.zip)
+* or download the [zip](https://github.com/CC-Digital-Innovation/validate-logins/archive/refs/heads/main.zip)
 
 ### Usage
 
