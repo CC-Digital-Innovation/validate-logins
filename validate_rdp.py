@@ -63,7 +63,7 @@ def auth_validate(host, port, transport, username, password):
 def check_rdp(host, username, password, rdp_port=3389, winrm_port=5985, transport='ntlm'):
     '''Test RDP port before checking validating user credentials'''
     if svc_validate(host, rdp_port):
-        if auth_validate(host, winrm_port, transport, username, password) == 0:
+        if auth_validate(host, winrm_port, transport, username, password):
             return True
         else:
             return False
