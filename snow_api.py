@@ -13,7 +13,7 @@ company_name = config['snow']['company']
 
 def get_cis():
     '''Returns a list of all devices filtered by company'''
-    cis = snow_client.resource(api_path='/table/cmdb_ci_docker_container')
+    cis = snow_client.resource(api_path='/table/cmdb_ci')
     query = (
         pysnow.QueryBuilder()
         .field('company.name').equals(company_name)
