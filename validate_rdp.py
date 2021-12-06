@@ -12,7 +12,7 @@ def svc_validate(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.connect((host, port))
-        success = "{} is reachale on port {}".format(host, port)
+        success = "{} is reachable on port {}".format(host, port)
         logger.info(success)
         return True
     except socket.error as e:

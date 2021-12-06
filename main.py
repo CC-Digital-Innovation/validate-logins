@@ -91,8 +91,8 @@ def main():
                         ci_result['host'] = ci['ip_address']
                         ci_result['status'] = 'Could not find hostname or IP address.'
             else:
-                logger.warning(f'Do not recognize methods \'{ci["u_primary_acces_method"]}\' or \'{ci["u_secondary_access_method"]} ')
-                ci_result['status'] = f'Primary method \'{ci["u_primary_acces_method"]}\' and secondary method \'{ci["u_secondary_access_method"]} are not supported.'
+                logger.warning(f'Do not recognize methods \'{ci["u_primary_acces_method"]}\' or \'{ci["u_secondary_access_method"]}\'')
+                ci_result['status'] = f'Primary method \'{ci["u_primary_acces_method"]}\' and secondary method \'{ci["u_secondary_access_method"]}\' are not supported.'
         except Exception as e:
             logger.exception(f'Uncaught exception: {e}')
             ci_result['status'] = f'Unknown error: {e}'
