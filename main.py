@@ -21,7 +21,8 @@ def main():
         ci_result = {
             'name': ci['name'],
             'link': snow_api.get_ci_url(ci['sys_id']),
-            'user': ci['u_username']
+            'user': ci['u_username'],
+            'host': ''
         }
         try:
             # validate ssh
@@ -94,7 +95,8 @@ def main():
             ci_result['status'] = f'Unknown error: {e}'
         finally:
             result.append(ci_result)
-    email_report.send_validate_report(result)
+    if result:
+        email_report.send_validate_report(result)
     
 
 if __name__ == '__main__':
