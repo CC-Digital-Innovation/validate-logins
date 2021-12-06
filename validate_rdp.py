@@ -36,8 +36,15 @@ def auth_validate(host, port, transport, username, password):
         username=username,
         password=password,
         server_cert_validation='ignore')
+    # try opening shell
     try:
         shell_id = p.open_shell()
+    except Exception as e:
+        logger.error('Error in validating: %s' % e)
+        return False
+    
+    # try running command
+    try:
         command_id = p.run_command(shell_id, 'hostname')
         std_out, std_err, status_code = p.get_command_output(shell_id, command_id)
         p.cleanup_command(shell_id, command_id)
@@ -47,7 +54,7 @@ def auth_validate(host, port, transport, username, password):
         logger.info(status_code)
         return True
     except Exception as e:
-        logger.error('Error in validating: %s' % e)
+        logger.error('Exception on command: %s' % e)
         return False
     finally:
         p.close_shell(shell_id)
