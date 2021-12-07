@@ -45,7 +45,6 @@ def send_validate_report(result):
                 border: 1px solid black;
                 border-collapse: collapse;
             }}
-        ​
             th {{
                 border: 1px solid black;
                 padding: 3px;
@@ -53,7 +52,6 @@ def send_validate_report(result):
                 color: white;
                 font-size: 100%;
             }}
-        ​
             td {{
                 border: 1px solid black;
                 padding: 3px;
@@ -62,7 +60,7 @@ def send_validate_report(result):
         </style>
         </head>
         <body>
-            <h1>Login Validation Repoort for {company_name}</h1>
+            <h1>Login Validation Report for {company_name}</h1>
             <table>
                 <thead>
                     <tr>
