@@ -19,3 +19,5 @@ to = to@example.com
 from = from@example.com
 user = user
 password = ********
+; displays in non-HTML client as point of contact
+maintainer_email = maintainer@email.com
