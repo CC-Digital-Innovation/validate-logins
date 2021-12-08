@@ -67,7 +67,11 @@ def send_validate_report(result):
                         <th>Name</th>
                         <th>Host</th>
                         <th>User</th>
+                        <th>Access Method 1</th>
                         <th>Status</th>
+                        <th>Access Method 2</th>
+                        <th>Status</th>
+                        <th>Notes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,7 +82,11 @@ def send_validate_report(result):
                 <td><a href="{ci['link']}">{ci['name']}</a></td>
                 <td>{ci['host']}</td>
                 <td>{ci['user']}</td>
-                <td>{ci['status']}</td>
+                <td>{ci['method1']}</td>
+                <td>{ci['status1']}</td>
+                <td>{ci['method2']}</td>
+                <td>{ci['status2']}</td>
+                <td>{ci['note']}</td>
             </tr>
             ''')
     html_builder.append('''\
