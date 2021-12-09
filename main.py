@@ -23,7 +23,6 @@ def main():
         ci_result = {
             'name': ci['name'],
             'link': snow_api.get_ci_url(ci['sys_id']),
-            'user': ci['u_username'],
             'note': []
         }
         if ci['u_host_name']:
@@ -92,14 +91,16 @@ def main():
                             logger.info(f'Authentication with {ci_result["host"]} failed for {ci["name"]}.')
                             ci_result[f'status{i}'] = 'Authentication failed'
                 else:
-                    ci_result[f'status{i}'] = 'Error'
-                    ci_result['note'].append(f'Access method \'{access_method}\' is not supported.')
+                    if access_method:
+                        ci_result[f'status{i}'] = 'Error'
+                        ci_result['note'].append(f'Access method \'{access_method}\' is not supported.')
+                    else:
+                        # empty access method
+                        ci_result[f'status{i}'] = ''
             except Exception as e:
                 logger.exception(f'Uncaught exception: {e}')
                 ci_result[f'status{i}'] = f'Unknown error for {access_method}'
                 ci_result['note'].append(str(e))
-        # join all notes
-        ci_result['note'] = '\n'.join(ci_result['note'])
         result.append(ci_result)
     if result:
         email_report.send_validate_report(result)
