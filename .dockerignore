@@ -1,5 +1,6 @@
-snow-payload.json
 venv/
 .vscode/
 .git/
+.gitignore
 README.md
+config.ini
