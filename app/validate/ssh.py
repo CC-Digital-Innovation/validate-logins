@@ -1,4 +1,5 @@
 import configparser
+from pathlib import PurePath
 import time
 
 import paramiko
@@ -6,9 +7,10 @@ from loguru import logger
 
 # read and parse config file
 config = configparser.ConfigParser()
-config.read('config.ini')
+config_path = PurePath(__file__).parent.parent / 'config.ini'
+config.read(config_path)
 
-def check_ssh(hostname, username, password, port=22, initial_wait=0, interval=0, retries=3):
+def validate(hostname, username, password, port=22, initial_wait=0, interval=0, retries=3):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
