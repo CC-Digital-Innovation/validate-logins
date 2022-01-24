@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: validate-logins
+spec:
+  template:
+    spec:
+      containers:
+      # Environment variables added for Vault
+      - env:
+        - name: JWT_PATH
+          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+        - name: VAULT_ADDR
+          value: http://vault.vault:8200
+        image: ccfs/validate-logins:latest
+        name: validate-logins
+      # Credentials secret added for authorizing private repository
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: OnFailure
+      # Service Account added for Vault
+      serviceAccountName: vault
+  backoffLimit: 3

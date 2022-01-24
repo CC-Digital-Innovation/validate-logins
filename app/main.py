@@ -47,9 +47,9 @@ def main():
                     try:
                         # check for custom port
                         if 'u_port' in ci and ci['u_port']:
-                            is_hostname_valid = ssh.check_ssh(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=ci['u_port'])
+                            is_hostname_valid = ssh.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=ci['u_port'])
                         else:
-                            is_hostname_valid = ssh.check_ssh(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                            is_hostname_valid = ssh.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
                         if is_hostname_valid:
                             logger.info(f'Authentication with {ci_result["host"]} successful for {ci["name"]}!')
                             ci_result[f'status{i}'] = 'Success'
@@ -63,9 +63,9 @@ def main():
                             if ci['ip_address']:
                                 # check for custom port
                                 if 'u_port' in ci and ci['u_port']:
-                                    is_hostname_valid = ssh.check_ssh(ci['ip_address'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=ci['u_port'])
+                                    is_hostname_valid = ssh.validate(ci['ip_address'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=ci['u_port'])
                                 else:
-                                    is_hostname_valid = ssh.check_ssh(ci['ip_address'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                                    is_hostname_valid = ssh.validate(ci['ip_address'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
                                 if is_hostname_valid:
                                     logger.info(f'Authentication with {ci["ip_address"]} successful for {ci["name"]}!')
                                     ci_result[f'status{i}'] = 'Success'
@@ -80,9 +80,9 @@ def main():
                     if ci['u_host_name']:
                         ci_result['host'] = ci['u_host_name']
                         if 'u_port' in ci and ci['u_port']:
-                            is_hostname_valid = rdp.check_rdp(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), rdp_port=int(ci['u_port']))
+                            is_hostname_valid = rdp.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), rdp_port=int(ci['u_port']))
                         else:
-                            is_hostname_valid = rdp.check_rdp(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                            is_hostname_valid = rdp.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
                         if is_hostname_valid:
                             logger.info(f'Authentication with {ci_result["host"]} successful for {ci["name"]}!')
                             ci_result[f'status{i}'] = 'Success'

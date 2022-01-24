@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selenium-standalone-firefox
+  namespace: selenium
+  labels:
+    app: selenium-standalone-firefox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selenium-standalone-firefox
+  template:
+    metadata:
+      labels:
+        app: selenium-standalone-firefox
+    spec:
+      containers:
+      - name: selenium-standalone-firefox
+        image: selenium/standalone-firefox
+        ports:
+          - containerPort: 4444
+        resources:
+          limits:
+            memory: "1000Mi"
+            cpu: "500m"
