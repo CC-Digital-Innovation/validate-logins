@@ -6,8 +6,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+# read and parse config file
 config = configparser.ConfigParser()
-config_path = PurePath(__file__).parent.parent.parent / 'config.ini'
+config_path = PurePath(__file__).parent.parent.parent/'config.ini'
 config.read(config_path)
 
 REMOTE_DRIVER = config['selenium']['remote_driver']

@@ -1,72 +1,88 @@
+import configparser
 import socket
+import time
+from pathlib import PurePath
 
 from loguru import logger
 from winrm.protocol import Protocol
 
-def svc_validate(host, port):
-    """Validates that service is running on specified host port.
+# read and parse config file
+config = configparser.ConfigParser()
+config_path = PurePath(__file__).parent.parent/'config.ini'
+config.read(config_path)
+
+DEFAULT_RDP_PORT = config['rdp'].getint('default_rdp_port')
+DEFAULT_WINRM_PORT = config['rdp'].getint('default_winrm_port')
+INITIAL_WAIT = config['rdp'].getfloat('initial_wait')
+INTERVAL = config['rdp'].getfloat('interval')
+ATTEMPTS=config['rdp'].getint('attempts')
+
+def svc_validate(host, port, interval=INTERVAL, attempts=ATTEMPTS):
+    '''Validates that service is running on specified port.
     Args:
         host (str): hostmane or IP address
         port (int): port number
-    """    
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    try:
-        s.connect((host, port))
-        success = "{} is reachable on port {}".format(host, port)
-        logger.info(success)
-        return True
-    except socket.error as e:
-        logger.error("Error on connect: %s" % e)
-        return False
-    finally:
-        s.close()
+    '''
+    
+    logger.info(f'Attempting connection for {host}:{port}.')
+    for x in range(1, attempts + 1):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((host, port))
+        except socket.error as e:
+            logger.warning(f'Error on connect: {e}')
+            if x < attempts:
+                logger.info(f'Trying again...({x})')
+                time.sleep(interval)
+        else:
+            logger.debug(f'{host} is reachable on port {port}')
+            return True
+        finally:
+            s.close()
+    logger.warning('Max retries reached.')
+    return False
 
-def auth_validate(host, port, transport, username, password):
-    """[summary]
+
+def auth_validate(host, port, transport, username, password, interval=INTERVAL, attempts=ATTEMPTS):
+    '''Validate login credentials with WinRM connection.
     Args:
         host (str): hostname or IP address
         port (int): WinRM port number
         transport (str): transport type
         username (str): username for auth
         password (str): password for auth
-    """    
+    '''  
     p = Protocol(
-        endpoint='http://{}:{}/wsman'.format(host,port),
+        endpoint=f'http://{host}:{port}/wsman',
         transport=transport,
         username=username,
         password=password,
         server_cert_validation='ignore')
     # try opening shell
-    try:
-        shell_id = p.open_shell()
-    except Exception as e:
-        logger.error('Error in validating: %s' % e)
-        return False
-    
-    # try running command
-    try:
-        command_id = p.run_command(shell_id, 'hostname')
-        std_out, std_err, status_code = p.get_command_output(shell_id, command_id)
-        p.cleanup_command(shell_id, command_id)
-        logger.info(std_out.decode("utf-8"))
-        if std_err:
-            logger.error('Error on command: %s' % std_err.decode('utf-8'))
-        logger.info(status_code)
-        return True
-    except Exception as e:
-        logger.error('Exception on command: %s' % e)
-        return False
-    finally:
-        p.close_shell(shell_id)
+    logger.info(f'Attempting to open shell as {username}@{host}:{port}')
+    for x in range(1, attempts + 1):
+        try:
+            shell_id = p.open_shell()
+        except Exception as e:
+            logger.warning(f'Error in validating: {e}')
+            if x < attempts:
+                logger.info(f'Trying again...({x})')
+                time.sleep(interval)
+        else:
+            p.close_shell(shell_id)
+            logger.info(f'Login successful for {username} at {host}:{port}')
+            return True
+    logger.warning(f'Max retires reached.')
+    return False
     
 
-def validate(host, username, password, rdp_port=3389, winrm_port=5985, transport='ntlm'):
-    '''Test RDP port before checking validating user credentials'''
+def validate(host, username, password, rdp_port=DEFAULT_RDP_PORT, winrm_port=DEFAULT_WINRM_PORT, transport='ntlm', initial_wait=INITIAL_WAIT):
+    '''Test RDP port before validating user credentials with WinRM'''
+    if initial_wait:
+        logger.debug(f'Initial sleep for {initial_wait}')
+    time.sleep(initial_wait)
+
     if svc_validate(host, rdp_port):
-        if auth_validate(host, winrm_port, transport, username, password):
-            return True
-        else:
-            return False
+        return auth_validate(host, winrm_port, transport, username, password)
     else:
-        logger.error('Failed to make RDP connection.')
-        return False
+        raise TimeoutError

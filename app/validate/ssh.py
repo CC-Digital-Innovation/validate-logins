@@ -1,37 +1,48 @@
 import configparser
-from pathlib import PurePath
+import socket
 import time
+from pathlib import PurePath
 
 import paramiko
 from loguru import logger
 
 # read and parse config file
 config = configparser.ConfigParser()
-config_path = PurePath(__file__).parent.parent / 'config.ini'
+config_path = PurePath(__file__).parent.parent/'config.ini'
 config.read(config_path)
 
-def validate(hostname, username, password, port=22, initial_wait=0, interval=0, retries=3):
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+DEFAULT_PORT=config['ssh'].getint('default_port')
+INITIAL_WAIT=config['ssh'].getfloat('initial_wait')
+INTERVAL=config['ssh'].getfloat('interval')
+ATTEMPTS=config['ssh'].getint('attempts')
 
+def validate(hostname, username, password, port=DEFAULT_PORT, initial_wait=INITIAL_WAIT, interval=INTERVAL, attempts=ATTEMPTS):
+    if initial_wait:
+        logger.debug(f'Initial sleep for {initial_wait}')
     time.sleep(initial_wait)
 
-    for x in range(retries):
+    logger.info(f'Attemptting SSH at {username}@{hostname}:{port}.')
+    # stop +1 because first attempt doesn't count as a retry
+    for x in range(1, attempts + 1):
         try:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             client.connect(hostname, port, username, password)
         except paramiko.ssh_exception.AuthenticationException:
             logger.warning(f'Authentication failed for {username} at {hostname}.')
-            if x+1 < retries:
-                logger.warning(f'Trying again...({x+1})')
-            time.sleep(interval)
-        except (TimeoutError, paramiko.ssh_exception.NoValidConnectionsError):
+            return False
+        except (TimeoutError, paramiko.ssh_exception.NoValidConnectionsError, socket.gaierror):
             logger.warning(f'Failed to establish connection to host {hostname}.')
-            if x+1 < retries:
-                logger.warning(f'Trying again...({x+1})')
-            time.sleep(interval)
+            if x < attempts:
+                logger.info(f'Trying again...({x})')
+                time.sleep(interval)
+            else:
+                logger.warning('Max retries reached.')
+                raise TimeoutError
         else:
-            logger.debug(f'Login successful for {username} at {hostname}!')
-            client.close()
+            logger.info(f'Login successful for {username} at {hostname}!')
             return True
-    logger.error(f'Failed to validate for {username} at {hostname}.')
+        finally:
+            client.close()
+    logger.warning('Max retries reached.')
     return False

@@ -1,114 +1,138 @@
 import configparser
-import socket
+import json
+import logging.handlers
 import sys
+from pathlib import PurePath
+from requests import ConnectionError, HTTPError, Timeout
 
 from loguru import logger
 
-import email_report
+import email_api
 import snow_api
 from validate import ssh, rdp
 
 # read and parse config file
 config = configparser.ConfigParser()
-config.read('config.ini')
+config_path = PurePath(__file__).parent/'config.ini'
+config.read(config_path)
 
-LOG_LEVEL = config['local']['log_level'].upper()
+LOG_LEVEL = config['logger']['log_level'].upper()
+SYSLOG = config['logger'].getboolean('syslog')
+SYSLOG_HOST = config['logger']['syslog_host']
+SYSLOG_PORT = config['logger'].getint('syslog_port')
+COMPANY_NAME = config['snow']['company']
 
 def main():
+    logger.info('------------------------------------------------------------')
+    logger.info(f'Login validation starting for {COMPANY_NAME}!')
+    logger.info('Grabbing data from SNOW...')
     cis = snow_api.get_cis()
+    logger.debug(json.dumps(cis, sort_keys=True, indent=4))
     result = []
     for ci in cis:
-        # notes is a newline-separated list of str
+        logger.info(f'Starting validation for device {ci["name"]}')
         ci_result = {
-            'name': ci['name'],
-            'link': snow_api.get_ci_url(ci['sys_id']),
-            'note': []
+            'Name': ci['name'],
+            'Link': snow_api.get_ci_url(ci['sys_id']),
+            'Host': ''
         }
-        if ci['u_host_name']:
-            ci_result['host'] = ci['u_host_name']
-        elif ci['ip_address']:
-            logger.warning(f'Hostname cannot be found for {ci["name"]}. Trying IP address...')
-            ci_result['host'] = ci['ip_address']
-            ci_result['note'].append('Could not find hostname so IP address was used.')
-        else:
-            logger.warning(f'IP Address cannot be found for {ci["name"]}.')
-            ci_result['host'] = ''
-            ci_result['status'] = 'Error'
-            ci_result['note'].append('Could not find hostname or IP address.')
+        if not ci['u_host_name'] and not ci['ip_address']:
+            logger.warning(f'Hostname and IP address cannot be found for {ci["name"]}.')
+            # added to preserve column order
+            ci_result['Login 1'] = 'Error'
+            ci_result['Access Method 1'] = ''
+            ci_result['Note 1'] = 'Could not find hostname or IP address.'
             result.append(ci_result)
             continue
         # feature multiple access methods
         access_methods = [ci['u_primary_acces_method'], ci['u_secondary_access_method']]
         for i, access_method in enumerate(access_methods, start=1):
-            ci_result[f'method{i}'] = access_method
+            logger.info(f'Checking {access_method} for device {ci["name"]}.')
+            ci_result[f'Access Method {i}'] = access_method
             try:
                 # validate ssh
                 if access_method == 'SSH':
+                    if ci['u_host_name']:
+                        ci_result['Host'] = ci['u_host_name']
+                    else:
+                        ci_result['Host'] = ci['ip_address']
                     try:
                         # check for custom port
                         if 'u_port' in ci and ci['u_port']:
-                            is_hostname_valid = ssh.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=ci['u_port'])
+                            login_result = ssh.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=int(ci['u_port']))
                         else:
-                            is_hostname_valid = ssh.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
-                        if is_hostname_valid:
-                            logger.info(f'Authentication with {ci_result["host"]} successful for {ci["name"]}!')
-                            ci_result[f'status{i}'] = 'Success'
+                            login_result = ssh.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                        if login_result:
+                            logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
+                            ci_result[f'Login {i}'] = 'Success'
                         else:
-                            logger.info(f'Authentication with {ci_result["host"]} failed for {ci["name"]}.')
-                            ci_result[f'status{i}'] = 'Authentication failed'
-                    except socket.gaierror as e:
-                        logger.warning(f'Unable to resolve hostname: {ci_result["host"]}')
-                        # try again with IP address
-                        if ci_result['host'] != ci['ip_address']:
-                            if ci['ip_address']:
-                                # check for custom port
-                                if 'u_port' in ci and ci['u_port']:
-                                    is_hostname_valid = ssh.validate(ci['ip_address'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=ci['u_port'])
-                                else:
-                                    is_hostname_valid = ssh.validate(ci['ip_address'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
-                                if is_hostname_valid:
-                                    logger.info(f'Authentication with {ci["ip_address"]} successful for {ci["name"]}!')
-                                    ci_result[f'status{i}'] = 'Success'
-                                else:
-                                    logger.info(f'Authentication with {ci["ip_address"]} failed for {ci["name"]}.')
-                                    ci_result[f'status{i}'] = 'Authentication failed'
-                            else:
-                                ci_result[f'status{i}'] = 'Error'
-                                ci_result['note'].append('Unable to resolve hostname and IP address is empty.')
+                            logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
+                            ci_result[f'Login {i}'] = 'Failed'
+                    except TimeoutError:
+                        logger.warning(f'Connection failed at {ci_result["Host"]}.')
+                        ci_result[f'Login {i}'] = 'Error'
+                        ci_result[f'Note {i}'] = f'Failed to establish connection to host {ci_result["Host"]}.'
                 # validate rdp
                 elif access_method == 'RDP':
                     if ci['u_host_name']:
-                        ci_result['host'] = ci['u_host_name']
+                        ci_result['Host'] = ci['u_host_name']
+                    else:
+                        ci_result['Host'] = ci['ip_address']
+                    try:
+                        # check for custom port
                         if 'u_port' in ci and ci['u_port']:
-                            is_hostname_valid = rdp.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), rdp_port=int(ci['u_port']))
+                            login_result = rdp.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), rdp_port=int(ci['u_port']))
                         else:
-                            is_hostname_valid = rdp.validate(ci_result['host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
-                        if is_hostname_valid:
-                            logger.info(f'Authentication with {ci_result["host"]} successful for {ci["name"]}!')
-                            ci_result[f'status{i}'] = 'Success'
+                            login_result = rdp.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                        if login_result:
+                            logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
+                            ci_result[f'Login {i}'] = 'Success'
                         else:
-                            logger.info(f'Authentication with {ci_result["host"]} failed for {ci["name"]}.')
-                            ci_result[f'status{i}'] = 'Authentication failed'
+                            logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
+                            ci_result[f'Login {i}'] = 'Failed'
+                    except TimeoutError:
+                        logger.warning(f'Connection failed at {ci_result["Host"]}.')
+                        ci_result[f'Login {i}'] = 'Error'
+                        ci_result[f'Note {i}'] = f'Failed to establish connection to host {ci_result["Host"]}.'
+                elif access_method == 'HTTP' or access_method == 'HTTPS':
+                    # TODO
+                    # Figure out field to filter by device type, e.g. UCS, Unity, Recoverpoint, Datadomain, etc.
+                    pass
                 else:
                     if access_method:
-                        ci_result[f'status{i}'] = 'Error'
-                        ci_result['note'].append(f'Access method \'{access_method}\' is not supported.')
+                        ci_result[f'Login {i}'] = 'Error'
+                        ci_result[f'Note {i}'] = f'Access method \'{access_method}\' is not supported.'
                     else:
                         # empty access method
-                        ci_result[f'status{i}'] = ''
+                        ci_result[f'Login {i}'] = ''
+                        ci_result[f'Note {i}'] = ''
             except Exception as e:
                 logger.exception(f'Uncaught exception: {e}')
-                ci_result[f'status{i}'] = f'Unknown error for {access_method}'
-                ci_result['note'].append(str(e))
+                ci_result[f'Login {i}'] = 'Error'
+                ci_result[f'Note {i}'] = f'Unknown error for {access_method}'
         result.append(ci_result)
     if result:
-        email_report.send_validate_report(result)
+        logger.info('Sending report...')
+        try:
+            email_api.send_report(result)
+        except (ConnectionError, Timeout) as e:
+            logger.error(f'Connection issue has occured: {e}')
+        except HTTPError as e:
+            logger.error(f'Failed to send report: {e}')
+        else:
+            logger.info('Report sent!')
+            logger.info(f'Login validation completed for {COMPANY_NAME}!')
     
+def set_log_level(log_level):
+    # remove default logger
+    logger.remove()
+    if log_level == 'QUIET':
+        return
+    logger.add(sys.stderr, level=log_level)
+    if SYSLOG:
+       logger.add(logging.handlers.SysLogHandler(address = (SYSLOG_HOST, SYSLOG_PORT)))
 
 if __name__ == '__main__':
+    set_log_level(LOG_LEVEL)
     with logger.catch():
-        # remove default logger
-        logger.remove()
-        if LOG_LEVEL != 'QUIET':
-            logger.add(sys.stderr, level=LOG_LEVEL)
         main()
