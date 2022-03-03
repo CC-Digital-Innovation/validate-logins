@@ -17,13 +17,16 @@ INITIAL_WAIT = config['rdp'].getfloat('initial_wait')
 INTERVAL = config['rdp'].getfloat('interval')
 ATTEMPTS=config['rdp'].getint('attempts')
 
-def svc_validate(host, port, interval=INTERVAL, attempts=ATTEMPTS):
+def svc_validate(host, port, initial_wait=INITIAL_WAIT, interval=INTERVAL, attempts=ATTEMPTS):
     '''Validates that service is running on specified port.
     Args:
         host (str): hostmane or IP address
         port (int): port number
     '''
     
+    logger.debug(f'Initial sleep for {initial_wait}')
+    time.sleep(initial_wait)
+
     logger.info(f'Attempting connection for {host}:{port}.')
     for x in range(1, attempts + 1):
         try:
@@ -43,7 +46,7 @@ def svc_validate(host, port, interval=INTERVAL, attempts=ATTEMPTS):
     return False
 
 
-def auth_validate(host, port, transport, username, password, interval=INTERVAL, attempts=ATTEMPTS):
+def auth_validate(host, port, transport, username, password, initial_wait=INITIAL_WAIT, interval=INTERVAL, attempts=ATTEMPTS):
     '''Validate login credentials with WinRM connection.
     Args:
         host (str): hostname or IP address
@@ -52,6 +55,9 @@ def auth_validate(host, port, transport, username, password, interval=INTERVAL, 
         username (str): username for auth
         password (str): password for auth
     '''  
+    logger.debug(f'Initial sleep for {initial_wait}')
+    time.sleep(initial_wait)
+
     p = Protocol(
         endpoint=f'http://{host}:{port}/wsman',
         transport=transport,
