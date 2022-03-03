@@ -89,5 +89,4 @@ spec:
     app: ssh-server-2
   ports:
   - name: ssh-2
-    port: 22
-    targetPort: 2222
+    port: 2222
