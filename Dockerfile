@@ -16,4 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app .
 
+# Replace CMD if running outside of Kubernetes
+# CMD [ "python3", "main.py" ]
 CMD [ "./build-script.sh" ]
