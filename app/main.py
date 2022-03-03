@@ -1,15 +1,16 @@
 import configparser
 import json
 import logging.handlers
+import requests
 import sys
 from pathlib import PurePath
-from requests import ConnectionError, HTTPError, Timeout
 
 from loguru import logger
 
 import email_api
 import snow_api
 from validate import ssh, rdp
+from validate.https import ucs
 
 # read and parse config file
 config = configparser.ConfigParser()
@@ -27,7 +28,7 @@ def main():
     logger.info(f'Login validation starting for {COMPANY_NAME}!')
     logger.info('Grabbing data from SNOW...')
     cis = snow_api.get_cis()
-    logger.debug(json.dumps(cis, sort_keys=True, indent=4))
+    logger.debug(json.dumps(cis[:3], sort_keys=True, indent=4))
     result = []
     for ci in cis:
         logger.info(f'Starting validation for device {ci["name"]}')
@@ -95,9 +96,43 @@ def main():
                         ci_result[f'Login {i}'] = 'Error'
                         ci_result[f'Note {i}'] = f'Failed to establish connection to host {ci_result["Host"]}.'
                 elif access_method == 'HTTP' or access_method == 'HTTPS':
-                    # TODO
-                    # Figure out field to filter by device type, e.g. UCS, Unity, Recoverpoint, Datadomain, etc.
-                    pass
+                    # TODO model_number is a temporary solution. Figure out field to filter by device type, e.g. UCS, Unity, Recoverpoint, Datadomain, etc.
+                    if ci['u_host_name']:
+                        ci_result['Host'] = ci['u_host_name']
+                    else:
+                        ci_result['Host'] = ci['ip_address']
+                    if 'model_number' in ci and ci['model_number']:
+                        if ci['model_number'] == 'UCS':
+                            try:
+                                url = f'{access_method.lower()}://{ci_result["Host"]}'
+                                login_result = ucs.validate(url, ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                            except ValueError as e:
+                                logger.error(e)
+                                ci_result[f'Login {i}'] = 'Error'
+                                ci_result[f'Note {i}'] = 'Server error.'
+                            except TimeoutError:
+                                logger.warning(f'Connection issue at {ci_result["Host"]}.')
+                                ci_result[f'Login {i}'] = 'Error'
+                                ci_result[f'Note {i}'] = f'Connection issue to host {ci_result["Host"]}.'
+                            except ConnectionError:
+                                logger.warning(f'Failed to reach {url}.')
+                                ci_result[f'Login {i}'] = 'Error'
+                                ci_result[f'Note {i}'] = f'Failed to reach {url}.'
+                            else:
+                                if login_result:
+                                    logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
+                                    ci_result[f'Login {i}'] = 'Success'
+                                else:
+                                    logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
+                                    ci_result[f'Login {i}'] = 'Failed'
+                        else:
+                            logger.error(f'Unsupported device type {ci["model_number"]}')
+                            ci_result[f'Login {i}'] = 'Error'
+                            ci_result[f'Note {i}'] = f'Device {ci["model_number"]} is not supported.'
+                    else:
+                        logger.error('Missing device type.')
+                        ci_result[f'Login {i}'] = 'Error'
+                        ci_result[f'Note {i}'] = 'Missing device type'
                 else:
                     if access_method:
                         ci_result[f'Login {i}'] = 'Error'
@@ -115,9 +150,9 @@ def main():
         logger.info('Sending report...')
         try:
             email_api.send_report(result)
-        except (ConnectionError, Timeout) as e:
+        except (requests.ConnectionError, requests.Timeout) as e:
             logger.error(f'Connection issue has occured: {e}')
-        except HTTPError as e:
+        except requests.HTTPError as e:
             logger.error(f'Failed to send report: {e}')
         else:
             logger.info('Report sent!')
