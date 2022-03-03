@@ -17,12 +17,10 @@ INTERVAL=config['ssh'].getfloat('interval')
 ATTEMPTS=config['ssh'].getint('attempts')
 
 def validate(hostname, username, password, port=DEFAULT_PORT, initial_wait=INITIAL_WAIT, interval=INTERVAL, attempts=ATTEMPTS):
-    if initial_wait:
-        logger.debug(f'Initial sleep for {initial_wait}')
+    logger.debug(f'Initial sleep for {initial_wait}')
     time.sleep(initial_wait)
 
     logger.info(f'Attemptting SSH at {username}@{hostname}:{port}.')
-    # stop +1 because first attempt doesn't count as a retry
     for x in range(1, attempts + 1):
         try:
             client = paramiko.SSHClient()
