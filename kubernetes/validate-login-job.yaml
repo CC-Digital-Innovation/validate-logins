@@ -1,23 +1,25 @@
-apiVersion: batch/v1
-kind: Job
+apiVersion: batch/v1beta1
+kind: CronJob
 metadata:
   name: validate-logins
 spec:
-  template:
+  schedule: "30 14 * * 1"
+  jobTemplate:
     spec:
-      containers:
-      # Environment variables added for Vault
-      - env:
-        - name: JWT_PATH
-          value: /var/run/secrets/kubernetes.io/serviceaccount/token
-        - name: VAULT_ADDR
-          value: http://vault.vault:8200
-        image: ccfs/validate-logins:latest
-        name: validate-logins
-      # Credentials secret added for authorizing private repository
-      imagePullSecrets:
-      - name: regcred
-      restartPolicy: OnFailure
-      # Service Account added for Vault
-      serviceAccountName: vault
-  backoffLimit: 3
+      template:
+        containers:
+        # Environment variables added for Vault
+        - env:
+          - name: JWT_PATH
+            value: /var/run/secrets/kubernetes.io/serviceaccount/token
+          - name: VAULT_ADDR
+            value: http://vault.vault:8200
+          image: registry.quokka.ninja/ccfs/xsautomate-actions/validate-logins:latest
+          name: validate-logins
+        # Credentials secret added for authorizing private repository
+        imagePullSecrets:
+        - name: gitlab-cr
+        restartPolicy: OnFailure
+        # Service Account added for Vault
+        serviceAccountName: vault
+      backoffLimit: 3
