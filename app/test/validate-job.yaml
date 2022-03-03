@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: validate-logins
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      containers:
+      - image: validate-login:dev
+        imagePullPolicy: Never
+        name: validate-logins
+      restartPolicy: Never
+  backoffLimit: 3
