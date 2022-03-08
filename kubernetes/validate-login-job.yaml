@@ -7,19 +7,20 @@ spec:
   jobTemplate:
     spec:
       template:
-        containers:
-        # Environment variables added for Vault
-        - env:
-          - name: JWT_PATH
-            value: /var/run/secrets/kubernetes.io/serviceaccount/token
-          - name: VAULT_ADDR
-            value: http://vault.vault:8200
-          image: registry.quokka.ninja/ccfs/xsautomate-actions/validate-logins:latest
-          name: validate-logins
-        # Credentials secret added for authorizing private repository
-        imagePullSecrets:
-        - name: gitlab-cr
-        restartPolicy: OnFailure
-        # Service Account added for Vault
-        serviceAccountName: vault
+        spec:
+          containers:
+          # Environment variables added for Vault
+          - env:
+            - name: JWT_PATH
+              value: /var/run/secrets/kubernetes.io/serviceaccount/token
+            - name: VAULT_ADDR
+              value: http://vault.vault:8200
+            image: registry.quokka.ninja/ccfs/xsautomate-actions/validate-logins:latest
+            name: validate-logins
+          # Credentials secret added for authorizing private repository
+          imagePullSecrets:
+          - name: gitlab-cr
+          restartPolicy: OnFailure
+          # Service Account added for Vault
+          serviceAccountName: vault
       backoffLimit: 3
