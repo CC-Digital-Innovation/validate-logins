@@ -13,7 +13,10 @@ spec:
           - sh
           - -c
           - >-
-            until (( nslookup -type=a ssh-server-1.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local && nslookup -type=a ssh-server-2.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local )); do
+            until (( nslookup -type=a ssh-server-1.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local \
+              && nslookup -type=a ssh-server-2.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local \
+              && nslookup -type=a selenium-standalone-firefox.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local \
+              && nslookup -type=a email-api.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local )); do
                 echo Waiting for ssh-server-1 and ssh-server-2...;
                 sleep 2; 
             done
@@ -153,7 +156,6 @@ spec:
               cpu: 100m
               memory: 128Mi
       restartPolicy: Always
-  revisionHistoryLimit: 0
 ---
 # Email API service
 apiVersion: v1
@@ -168,3 +170,43 @@ spec:
       port: 80
   selector:
     io.kompose.service: email-api
+---
+# Selenium Remote WebDriver
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: selenium-standalone-firefox
+  labels:
+    app: selenium-standalone-firefox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: selenium-standalone-firefox
+  template:
+    metadata:
+      labels:
+        app: selenium-standalone-firefox
+    spec:
+      containers:
+      - name: selenium-standalone-firefox
+        image: selenium/standalone-firefox
+        ports:
+          - containerPort: 4444
+        resources:
+          limits:
+            memory: "1000Mi"
+            cpu: "500m"
+---
+# Selenium Remote WebDriver Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: selenium-standalone-firefox
+  labels:
+    app: selenium-standalone-firefox
+spec:
+  ports:
+  - port: 4444
+  selector:
+    app: selenium-standalone-firefox
