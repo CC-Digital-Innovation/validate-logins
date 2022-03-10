@@ -36,6 +36,7 @@ def decrypt_password(sys_id):
     url = f'{SNOW_BASE_URL}/{SNOW_DECRYPT_PATH}/{sys_id}/getcipassword'
     headers = {'Authorization': SNOW_API_KEY}
     response = requests.get(url, headers=headers)
+    response.raise_for_status()
     return response.json()['result']['fs_password']
 
 def get_ci_url(sys_id):

@@ -1,13 +1,14 @@
 import configparser
 import json
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import requests
 from loguru import logger
 
 # read and parse config file
 config = configparser.ConfigParser()
-config.read('config.ini')
+config_path = PurePath(__file__).parent/'config.ini'
+config.read(config_path)
 
 TOKEN = config['email']['token']
 ID = config['email']['id']
@@ -29,8 +30,8 @@ def send_report(result):
     logger.debug('Using email API to send report...')
     try:
         with open('data-dump.json', 'rb') as fp:
-            email(fp)
-        logger.debug('Returned from email-api')
+            response = email(fp)
+        logger.debug(f'Email response: {response}')
     finally:
         logger.debug('Deleting dump file...')
         Path('data-dump.json').unlink(missing_ok=True)
@@ -52,3 +53,4 @@ def email(file):
     }
     response = requests.post(url, data=data, files={'file': file})
     response.raise_for_status()
+    return response.text

@@ -50,105 +50,101 @@ def main():
         for i, access_method in enumerate(access_methods, start=1):
             logger.info(f'Checking {access_method} for device {ci["name"]}.')
             ci_result[f'Access Method {i}'] = access_method
-            try:
-                # validate ssh
-                if access_method == 'SSH':
-                    if ci['u_host_name']:
-                        ci_result['Host'] = ci['u_host_name']
-                    else:
-                        ci_result['Host'] = ci['ip_address']
-                    try:
-                        # check for custom port
-                        if 'u_port' in ci and ci['u_port']:
-                            login_result = ssh.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=int(ci['u_port']))
-                        else:
-                            login_result = ssh.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
-                        if login_result:
-                            logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
-                            ci_result[f'Login {i}'] = 'Success'
-                        else:
-                            logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
-                            ci_result[f'Login {i}'] = 'Failed'
-                    except TimeoutError:
-                        logger.warning(f'Connection failed at {ci_result["Host"]}.')
-                        ci_result[f'Login {i}'] = 'Error'
-                        ci_result[f'Note {i}'] = f'Failed to establish connection to host {ci_result["Host"]}.'
-                # validate rdp
-                elif access_method == 'RDP':
-                    if ci['u_host_name']:
-                        ci_result['Host'] = ci['u_host_name']
-                    else:
-                        ci_result['Host'] = ci['ip_address']
-                    try:
-                        # check for custom port
-                        if 'u_port' in ci and ci['u_port']:
-                            login_result = rdp.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), rdp_port=int(ci['u_port']))
-                        else:
-                            login_result = rdp.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
-                        if login_result:
-                            logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
-                            ci_result[f'Login {i}'] = 'Success'
-                        else:
-                            logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
-                            ci_result[f'Login {i}'] = 'Failed'
-                    except TimeoutError:
-                        logger.warning(f'Connection failed at {ci_result["Host"]}.')
-                        ci_result[f'Login {i}'] = 'Error'
-                        ci_result[f'Note {i}'] = f'Failed to establish connection to host {ci_result["Host"]}.'
-                elif access_method == 'HTTP' or access_method == 'HTTPS':
-                    # TODO model_number is a temporary solution. Figure out field to filter by device type, e.g. UCS, Unity, Recoverpoint, Datadomain, etc.
-                    if ci['u_host_name']:
-                        ci_result['Host'] = ci['u_host_name']
-                    else:
-                        ci_result['Host'] = ci['ip_address']
-                    if 'model_number' in ci and ci['model_number']:
-                        if ci['model_number'] == 'UCS':
-                            try:
-                                url = f'{access_method.lower()}://{ci_result["Host"]}'
-                                login_result = ucs.validate(url, ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
-                            except ValueError as e:
-                                logger.error(e)
-                                ci_result[f'Login {i}'] = 'Error'
-                                ci_result[f'Note {i}'] = 'Server error.'
-                            except TimeoutError:
-                                logger.warning(f'Connection issue at {ci_result["Host"]}.')
-                                ci_result[f'Login {i}'] = 'Error'
-                                ci_result[f'Note {i}'] = f'Connection issue to host {ci_result["Host"]}.'
-                            except ConnectionError:
-                                logger.warning(f'Failed to reach {url}.')
-                                ci_result[f'Login {i}'] = 'Error'
-                                ci_result[f'Note {i}'] = f'Failed to reach {url}.'
-                            else:
-                                if login_result:
-                                    logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
-                                    ci_result[f'Login {i}'] = 'Success'
-                                else:
-                                    logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
-                                    ci_result[f'Login {i}'] = 'Failed'
-                        else:
-                            logger.error(f'Unsupported device type {ci["model_number"]}')
-                            ci_result[f'Login {i}'] = 'Error'
-                            ci_result[f'Note {i}'] = f'Device {ci["model_number"]} is not supported.'
-                    else:
-                        logger.error('Missing device type.')
-                        ci_result[f'Login {i}'] = 'Error'
-                        ci_result[f'Note {i}'] = 'Missing device type'
+            # validate ssh
+            if access_method == 'SSH':
+                if ci['u_host_name']:
+                    ci_result['Host'] = ci['u_host_name']
                 else:
-                    if access_method:
-                        ci_result[f'Login {i}'] = 'Error'
-                        ci_result[f'Note {i}'] = f'Access method \'{access_method}\' is not supported.'
+                    ci_result['Host'] = ci['ip_address']
+                try:
+                    # check for custom port
+                    if 'u_port' in ci and ci['u_port']:
+                        login_result = ssh.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), port=int(ci['u_port']))
                     else:
-                        # empty access method
-                        ci_result[f'Login {i}'] = ''
-                        ci_result[f'Note {i}'] = ''
-            except Exception as e:
-                logger.exception(f'Uncaught exception: {e}')
-                ci_result[f'Login {i}'] = 'Error'
-                ci_result[f'Note {i}'] = f'Unknown error for {access_method}'
+                        login_result = ssh.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                    if login_result:
+                        logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
+                        ci_result[f'Login {i}'] = 'Success'
+                    else:
+                        logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
+                        ci_result[f'Login {i}'] = 'Failed'
+                except TimeoutError:
+                    logger.warning(f'Connection failed at {ci_result["Host"]}.')
+                    ci_result[f'Login {i}'] = 'Error'
+                    ci_result[f'Note {i}'] = f'Failed to establish connection to host {ci_result["Host"]}.'
+            # validate rdp
+            elif access_method == 'RDP':
+                if ci['u_host_name']:
+                    ci_result['Host'] = ci['u_host_name']
+                else:
+                    ci_result['Host'] = ci['ip_address']
+                try:
+                    # check for custom port
+                    if 'u_port' in ci and ci['u_port']:
+                        login_result = rdp.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']), rdp_port=int(ci['u_port']))
+                    else:
+                        login_result = rdp.validate(ci_result['Host'], ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                    if login_result:
+                        logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
+                        ci_result[f'Login {i}'] = 'Success'
+                    else:
+                        logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
+                        ci_result[f'Login {i}'] = 'Failed'
+                except TimeoutError:
+                    logger.warning(f'Connection failed at {ci_result["Host"]}.')
+                    ci_result[f'Login {i}'] = 'Error'
+                    ci_result[f'Note {i}'] = f'Failed to establish connection to host {ci_result["Host"]}.'
+            elif access_method == 'HTTP' or access_method == 'HTTPS':
+                # TODO model_number is a temporary solution. Figure out field to filter by device type, e.g. UCS, Unity, Recoverpoint, Datadomain, etc.
+                if ci['u_host_name']:
+                    ci_result['Host'] = ci['u_host_name']
+                else:
+                    ci_result['Host'] = ci['ip_address']
+                if 'model_number' in ci and ci['model_number']:
+                    if ci['model_number'] == 'UCS':
+                        try:
+                            url = f'{access_method.lower()}://{ci_result["Host"]}'
+                            login_result = ucs.validate(url, ci['u_username'], snow_api.decrypt_password(ci['sys_id']))
+                        except ValueError as e:
+                            logger.error(e)
+                            ci_result[f'Login {i}'] = 'Error'
+                            ci_result[f'Note {i}'] = 'Server error.'
+                        except TimeoutError:
+                            logger.warning(f'Connection issue at {ci_result["Host"]}.')
+                            ci_result[f'Login {i}'] = 'Error'
+                            ci_result[f'Note {i}'] = f'Connection issue to host {ci_result["Host"]}.'
+                        except ConnectionError:
+                            logger.warning(f'Failed to reach {url}.')
+                            ci_result[f'Login {i}'] = 'Error'
+                            ci_result[f'Note {i}'] = f'Failed to reach {url}.'
+                        else:
+                            if login_result:
+                                logger.info(f'Authentication with {ci_result["Host"]} successful for {ci["name"]}!')
+                                ci_result[f'Login {i}'] = 'Success'
+                            else:
+                                logger.warning(f'Authentication with {ci_result["Host"]} failed for {ci["name"]}.')
+                                ci_result[f'Login {i}'] = 'Failed'
+                    else:
+                        logger.error(f'Unsupported device type {ci["model_number"]}')
+                        ci_result[f'Login {i}'] = 'Error'
+                        ci_result[f'Note {i}'] = f'Device {ci["model_number"]} is not supported.'
+                else:
+                    logger.error('Missing device type.')
+                    ci_result[f'Login {i}'] = 'Error'
+                    ci_result[f'Note {i}'] = 'Missing device type'
+            else:
+                if access_method:
+                    ci_result[f'Login {i}'] = 'Error'
+                    ci_result[f'Note {i}'] = f'Access method \'{access_method}\' is not supported.'
+                else:
+                    # empty access method
+                    ci_result[f'Login {i}'] = ''
+                    ci_result[f'Note {i}'] = ''
         result.append(ci_result)
     if result:
         logger.info('Sending report...')
         try:
+            logger.debug(result)
             email_api.send_report(result)
         except (requests.ConnectionError, requests.Timeout) as e:
             logger.error(f'Connection issue has occured: {e}')
