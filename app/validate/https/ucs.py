@@ -7,6 +7,7 @@ from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from urllib3.exceptions import MaxRetryError
 
 # read and parse config file
 config = configparser.ConfigParser()
@@ -29,8 +30,9 @@ def validate(url, username, password, max_wait_time=MAX_WAIT_TIME, initial_wait=
     Returns:
         True if logged in
     Raises:
-        ValueError for unsupported browser
-        selenium.common.exceptions.TimeoutException if timed out at any point
+        ValueError for unsupported browser, or failed to reach remote web driver
+        TimeoutError for failed to find elements in browser
+        ConnectionError for failed to reach website
     '''
     if BROWSER.lower() == 'firefox':
         options = webdriver.FirefoxOptions()
@@ -48,10 +50,16 @@ def validate(url, username, password, max_wait_time=MAX_WAIT_TIME, initial_wait=
         try:
             logger.debug(f'Opening browser {url}...')
             driver = webdriver.Remote(command_executor=REMOTE_DRIVER, options=options)
+            driver.set_page_load_timeout(MAX_WAIT_TIME)
             driver.get(url)
             logger.debug(f'{url} opened!')
-        except WebDriverException as e:
+        except MaxRetryError as e:
+            logger.error(e)
+            driver.quit()
+            raise ValueError
+        except (WebDriverException, TimeoutException) as e:
             logger.warning(e)
+            driver.quit()
             if x < attempts:
                 logger.info(f'Trying again...({x})')
                 time.sleep(interval)
@@ -59,6 +67,7 @@ def validate(url, username, password, max_wait_time=MAX_WAIT_TIME, initial_wait=
             else:
                 logger.warning('Max retries reached.')
                 raise ConnectionError
+
         # Attempt to login
         try:
             WebDriverWait(driver, max_wait_time).until(EC.frame_to_be_available_and_switch_to_it(0))
