@@ -4,3 +4,4 @@ pysnow
 pywinrm
 requests
 selenium
+ucsmsdk

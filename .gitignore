@@ -2,3 +2,5 @@ config.ini
 .vscode/
 venv/
 **/__pycache__/
+.history
+.coverage
